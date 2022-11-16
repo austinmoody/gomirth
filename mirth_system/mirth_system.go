@@ -28,7 +28,7 @@ type MirthSystemStats struct {
 	DiskTotalBytes       int               `xml:"diskTotalBytes"`
 }
 
-func GetSystemInfo(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (MirthSystemInfo, error) {
+func GetSystemInfo(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (MirthSystemInfo, error) {
 
 	mirthSystemInfo := MirthSystemInfo{}
 
@@ -40,7 +40,7 @@ func GetSystemInfo(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (Mi
 	}
 
 	req.Header.Add("Accept", "application/xml")
-	req.AddCookie(&jsessionId)
+	req.AddCookie(&mirthSession.JsessionId)
 
 	c := &http.Client{}
 	if apiConfig.IgnoreCert == true {
@@ -71,7 +71,7 @@ func GetSystemInfo(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (Mi
 	return mirthSystemInfo, nil
 }
 
-func GetSystemStats(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (MirthSystemStats, error) {
+func GetSystemStats(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (MirthSystemStats, error) {
 	mirthSystemStats := MirthSystemStats{}
 
 	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "system/stats")
@@ -82,7 +82,7 @@ func GetSystemStats(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (M
 	}
 
 	req.Header.Add("Accept", "application/xml")
-	req.AddCookie(&jsessionId)
+	req.AddCookie(&mirthSession.JsessionId)
 
 	c := &http.Client{}
 	if apiConfig.IgnoreCert == true {

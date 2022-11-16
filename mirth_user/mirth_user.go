@@ -39,9 +39,9 @@ type MirthUser struct {
 	LastStrike       gomirth.MirthTime `xml:"lastStrikeTime"`
 }
 
-func Login(apiConfig gomirth.MirthApiConfig, username string, password string) (MirthLoginStatus, error) {
+func Login(apiConfig gomirth.MirthApiConfig, username string, password string) (gomirth.MirthSession, error) {
 
-	loginStatus := MirthLoginStatus{Success: false}
+	loginStatus := gomirth.MirthSession{Success: false}
 
 	// Login to Mirth API
 	// Response Code 401 when bad user/pass
@@ -101,7 +101,7 @@ func Login(apiConfig gomirth.MirthApiConfig, username string, password string) (
 	return loginStatus, nil
 }
 
-func Logout(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (bool, error) {
+func Logout(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (bool, error) {
 	// Mirth API Logout
 	// 204 = successful, logout returns no message
 	// 401 = attempt to log out when weren't logged in
@@ -114,7 +114,7 @@ func Logout(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (bool, err
 
 	req.Header.Add("Accept", "application/xml")
 	req.Header.Add("Content-Type", "application/xml")
-	req.AddCookie(&jsessionId)
+	req.AddCookie(&mirthSession.JsessionId)
 
 	c := &http.Client{}
 	if apiConfig.IgnoreCert == true {
@@ -135,7 +135,7 @@ func Logout(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (bool, err
 
 }
 
-func GetUsers(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (MirthUsers, error) {
+func GetUsers(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (MirthUsers, error) {
 
 	mirthUsers := MirthUsers{}
 
@@ -147,7 +147,7 @@ func GetUsers(apiConfig gomirth.MirthApiConfig, jsessionId http.Cookie) (MirthUs
 	}
 
 	req.Header.Add("Accept", "application/xml")
-	req.AddCookie(&jsessionId)
+	req.AddCookie(&mirthSession.JsessionId)
 
 	c := &http.Client{}
 	if apiConfig.IgnoreCert == true {
