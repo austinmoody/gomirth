@@ -68,6 +68,22 @@ type BackgroundColor struct {
 	Alpha   int      `xml:"alpha"`
 }
 
+type CharacterSets struct {
+	XMLName      struct{} `xml:"list"`
+	CharacterSet []string `xml:"string""`
+}
+
+type ConfigurationMap struct {
+	XMLName struct{}                `xml:"map"`
+	Entries []ConfigurationMapEntry `xml:"entry"`
+}
+
+type ConfigurationMapEntry struct {
+	XMLName struct{} `xml:"entry"`
+	Key     string   `xml:"string"`
+	Value   string   `xml:"com.mirth.connect.util.ConfigurationProperty>value"`
+}
+
 func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
 	guid := ""
 
@@ -107,44 +123,23 @@ func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSe
 }
 
 func BuildDate(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (time.Time, error) {
-
 	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/buildDate")
 
-	req, err := http.NewRequest("GET", apiUrl, nil)
+	headers := http.Header{}
+	headers.Add("Accept", "text/plain")
+
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, headers)
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	req.Header.Add("Accept", "text/plain")
-	req.AddCookie(&mirthSession.JsessionId)
-
-	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
-		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-		c = &http.Client{Transport: tr}
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	err = resp.Body.Close()
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	buildDate, err := time.Parse("Jan 02, 2006", string(data))
+	buildDate, err := time.Parse("Jan 02, 2006", string(resp.Body))
 	if err != nil {
 		return time.Time{}, err
 	}
 
 	return buildDate, nil
+
 }
 
 func GetChannelDependencies(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (ChannelDependencies, error) {
@@ -376,4 +371,38 @@ func UpdateChannelTags(channelTags ChannelTags, apiConfig gomirth.MirthApiConfig
 	} else {
 		return errors.New("issue updating mirth channel tags")
 	}
+}
+
+func GetCharacterSets(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (CharacterSets, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/charsets")
+
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, http.Header{})
+	if err != nil {
+		return CharacterSets{}, err
+	}
+
+	characterSets := CharacterSets{}
+	err = xml.Unmarshal(resp.Body, &characterSets)
+	if err != nil {
+		return CharacterSets{}, err
+	}
+
+	return characterSets, nil
+}
+
+func GetConfigurationMap(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (ConfigurationMap, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/configurationMap")
+
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, http.Header{})
+	if err != nil {
+		return ConfigurationMap{}, err
+	}
+
+	configMap := ConfigurationMap{}
+	err = xml.Unmarshal(resp.Body, &configMap)
+	if err != nil {
+		return ConfigurationMap{}, err
+	}
+
+	return configMap, nil
 }
