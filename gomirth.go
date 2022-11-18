@@ -1,6 +1,7 @@
 package gomirth
 
 import (
+	"bytes"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -32,12 +33,11 @@ type MirthApiResponse struct {
 	Body []byte
 }
 
-/*
-func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header, toPut []byte) error {
+func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header, toPut []byte) (MirthApiResponse, error) {
 
 	req, err := http.NewRequest("PUT", apiUrl, bytes.NewReader(toPut))
 	if err != nil {
-		return err
+		return MirthApiResponse{}, err
 	}
 
 	req.Header = headers
@@ -51,10 +51,21 @@ func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl 
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return err
+		return MirthApiResponse{}, err
 	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return MirthApiResponse{}, err
+	}
+
+	err = resp.Body.Close()
+	if err != nil {
+		return MirthApiResponse{}, err
+	}
+
+	return MirthApiResponse{Code: resp.StatusCode, Body: data}, nil
 }
-*/
 
 func MirthApiGetter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header) (MirthApiResponse, error) {
 

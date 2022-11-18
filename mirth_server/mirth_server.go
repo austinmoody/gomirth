@@ -70,7 +70,7 @@ type BackgroundColor struct {
 
 type CharacterSets struct {
 	XMLName      struct{} `xml:"list"`
-	CharacterSet []string `xml:"string""`
+	CharacterSet []string `xml:"string"`
 }
 
 type ConfigurationMap struct {
@@ -406,3 +406,30 @@ func GetConfigurationMap(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.
 
 	return configMap, nil
 }
+
+func UpdateConfigurationMap(configurationMap ConfigurationMap, apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) error {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/configurationMap")
+
+	// Convert ConfigurationMap to XML to []byte
+	mapXml, err := xml.Marshal(configurationMap)
+	if err != nil {
+		return err
+	}
+
+	headers := http.Header{}
+	headers.Add("Content-Type", "application/xml")
+	headers.Add("Accept", "application/xml")
+
+	resp, err := gomirth.MirthApiPutter(apiConfig, mirthSession, apiUrl, headers, mapXml)
+	if err != nil {
+		return err
+	}
+
+	if resp.Code != 204 {
+		return errors.New(fmt.Sprintf("issue updating configuration map, status code returned = %d", resp.Code))
+	}
+
+	return nil
+}
+
+func GetDatabaseDrivers(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) {}
