@@ -109,6 +109,67 @@ type EncryptionSettings struct {
 	SecretKey           string   `xml:"secretKey,omitempty"`
 }
 
+type GlobalScripts struct {
+	XMLName struct{}       `xml:"map"`
+	Scripts []GlobalScript `xml:"entry"`
+}
+
+type GlobalScript struct {
+	XMLName  struct{} `xml:"entry"`
+	Contents []string `xml:"string"`
+}
+
+func (gs *GlobalScripts) getScriptCode(scriptType string) string {
+	scriptCode := ""
+	for _, script := range gs.Scripts {
+		if script.Contents[0] == scriptType {
+			scriptCode = script.Contents[1]
+		}
+	}
+
+	return scriptCode
+}
+
+func (gs *GlobalScripts) setScriptCode(scriptType string, scriptCode string) {
+	for _, script := range gs.Scripts {
+		if script.Contents[0] == scriptType {
+			script.Contents[1] = scriptCode
+		}
+	}
+}
+
+func (gs *GlobalScripts) GetDeployScript() string {
+	return gs.getScriptCode("Deploy")
+}
+
+func (gs *GlobalScripts) SetDeployScript(scriptCode string) {
+	gs.setScriptCode("Deploy", scriptCode)
+}
+
+func (gs *GlobalScripts) GetUndeployScript() string {
+	return gs.getScriptCode("Undeploy")
+}
+
+func (gs *GlobalScripts) SetUndeployScript(scriptCode string) {
+	gs.setScriptCode("Undeploy", scriptCode)
+}
+
+func (gs *GlobalScripts) GetPostprocessorScript() string {
+	return gs.getScriptCode("Postprocessor")
+}
+
+func (gs *GlobalScripts) SetPostprocessorScript(scriptCode string) {
+	gs.setScriptCode("Postprocessor", scriptCode)
+}
+
+func (gs *GlobalScripts) GetPreprocessorScript() string {
+	return gs.getScriptCode("Preprocessor")
+}
+
+func (gs *GlobalScripts) SetPreprocessorScript(scriptCode string) {
+	gs.setScriptCode("Preprocessor", scriptCode)
+}
+
 func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
 	guid := ""
 
@@ -514,4 +575,46 @@ func GetEncryptionSettings(apiConfig gomirth.MirthApiConfig, mirthSession gomirt
 	}
 
 	return encryptionSettings, nil
+}
+
+func GetGlobalScripts(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (GlobalScripts, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/globalScripts")
+
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, http.Header{})
+	if err != nil {
+		return GlobalScripts{}, err
+	}
+
+	gs := GlobalScripts{}
+	err = xml.Unmarshal(resp.Body, &gs)
+	if err != nil {
+		return GlobalScripts{}, err
+	}
+
+	return gs, nil
+}
+
+func UpdateGlobalScripts(globalScripts GlobalScripts, apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) error {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/globalScripts")
+
+	// Convert DatabaseDrivers to XML to []byte
+	mapXml, err := xml.Marshal(globalScripts)
+	if err != nil {
+		return err
+	}
+
+	headers := http.Header{}
+	headers.Add("Content-Type", "application/xml")
+	headers.Add("Accept", "application/xml")
+
+	resp, err := gomirth.MirthApiPutter(apiConfig, mirthSession, apiUrl, headers, mapXml)
+	if err != nil {
+		return err
+	}
+
+	if resp.Code != 204 {
+		return errors.New(fmt.Sprintf("issue updating global scripts, status code returned = %d", resp.Code))
+	}
+
+	return nil
 }
