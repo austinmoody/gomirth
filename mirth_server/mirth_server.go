@@ -84,6 +84,31 @@ type ConfigurationMapEntry struct {
 	Value   string   `xml:"com.mirth.connect.util.ConfigurationProperty>value"`
 }
 
+type DatabaseDrivers struct {
+	XMLName struct{}             `xml:"list"`
+	Drivers []DatabaseDriverInfo `xml:"driverInfo"`
+}
+
+type DatabaseDriverInfo struct {
+	XMLName               struct{} `xml:"driverInfo"'`
+	ClassName             string   `xml:"className,omitempty"`
+	Name                  string   `xml:"name,omitempty"`
+	Template              string   `xml:"template,omitempty"`
+	SelectLimit           string   `xml:"selectLimit,omitempty"`
+	AlternativeClassNames []string `xml:"alternativeClassNames>string"`
+}
+
+type EncryptionSettings struct {
+	XMLName             struct{} `xml:"com.mirth.connect.model.EncryptionSettings"`
+	EncryptExport       bool     `xml:"encryptExport,omitempty"`
+	EncryptProperties   bool     `xml:"encryptProperties,omitempty"`
+	EncryptionAlgorithm string   `xml:"encryptionAlgorithm,omitempty"`
+	EncryptionKeyLength int      `xml:"encryptionKeyLength,omitempty"`
+	DigestAlgorithm     string   `xml:"digestAlgorithm,omitempty"`
+	SecurityProvider    string   `xml:"securityProvider,omitempty"`
+	SecretKey           string   `xml:"secretKey,omitempty"`
+}
+
 func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
 	guid := ""
 
@@ -432,4 +457,61 @@ func UpdateConfigurationMap(configurationMap ConfigurationMap, apiConfig gomirth
 	return nil
 }
 
-func GetDatabaseDrivers(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) {}
+func GetDatabaseDrivers(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (DatabaseDrivers, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/databaseDrivers")
+
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, http.Header{})
+	if err != nil {
+		return DatabaseDrivers{}, err
+	}
+
+	drivers := DatabaseDrivers{}
+	err = xml.Unmarshal(resp.Body, &drivers)
+	if err != nil {
+		return DatabaseDrivers{}, err
+	}
+
+	return drivers, nil
+}
+
+func UpdateDatabaseDrivers(databaseDrivers DatabaseDrivers, apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) error {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/databaseDrivers")
+
+	// Convert DatabaseDrivers to XML to []byte
+	mapXml, err := xml.Marshal(databaseDrivers)
+	if err != nil {
+		return err
+	}
+
+	headers := http.Header{}
+	headers.Add("Content-Type", "application/xml")
+	headers.Add("Accept", "application/xml")
+
+	resp, err := gomirth.MirthApiPutter(apiConfig, mirthSession, apiUrl, headers, mapXml)
+	if err != nil {
+		return err
+	}
+
+	if resp.Code != 204 {
+		return errors.New(fmt.Sprintf("issue updating database drivers, status code returned = %d", resp.Code))
+	}
+
+	return nil
+}
+
+func GetEncryptionSettings(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (EncryptionSettings, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/encryption")
+
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, http.Header{})
+	if err != nil {
+		return EncryptionSettings{}, err
+	}
+
+	encryptionSettings := EncryptionSettings{}
+	err = xml.Unmarshal(resp.Body, &encryptionSettings)
+	if err != nil {
+		return EncryptionSettings{}, err
+	}
+
+	return encryptionSettings, nil
+}
