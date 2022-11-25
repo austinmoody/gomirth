@@ -170,6 +170,21 @@ func (gs *GlobalScripts) SetPreprocessorScript(scriptCode string) {
 	gs.setScriptCode("Preprocessor", scriptCode)
 }
 
+type PasswordRequirements struct {
+	XMLName        struct{} `xml:"passwordRequirements"`
+	MinimumLength  int      `xml:"minLength"`
+	MinimumUpper   int      `xml:"minUpper"`
+	MinimumLower   int      `xml:"minLower"`
+	MinimumNumeric int      `xml:"minNumeric"`
+	MinimumSpecial int      `xml:"minSpecial"`
+	RetryLimit     int      `xml:"retryLimit"`
+	LockoutPeriod  int      `xml:"lockoutPeriod"`
+	Expiration     int      `xml:"expiration"`
+	GracePeriod    int      `xml:"gracePeriod"`
+	ReusePeriod    int      `xml:"reusePeriod"`
+	ReuseLimit     int      `xml:"reuseLimit"`
+}
+
 func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
 	guid := ""
 
@@ -617,4 +632,47 @@ func UpdateGlobalScripts(globalScripts GlobalScripts, apiConfig gomirth.MirthApi
 	}
 
 	return nil
+}
+
+func GetServerId(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/id")
+
+	header := http.Header{}
+	header.Add("Accept", "text/plain")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return "", err
+	}
+
+	return string(resp.Body), nil
+}
+
+func GetJvmName(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/jvm")
+
+	header := http.Header{}
+	header.Add("Accept", "text/plain")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return "", err
+	}
+
+	return string(resp.Body), nil
+}
+
+func GetPasswordRequirements(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (PasswordRequirements, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/passwordRequirements")
+
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, http.Header{})
+	if err != nil {
+		return PasswordRequirements{}, err
+	}
+
+	pwd := PasswordRequirements{}
+	err = xml.Unmarshal(resp.Body, &pwd)
+	if err != nil {
+		return PasswordRequirements{}, err
+	}
+
+	return pwd, nil
 }

@@ -6,3 +6,4 @@
 - Server Configuration - _testEmail I need to figure out "what" to send here
 - Usage Data - have never used this and not sure how to call it yet
 - /server/configuration - need to work out that gigantic struct
+- /server/licenseInfo - pull full example from work w/ extensions
