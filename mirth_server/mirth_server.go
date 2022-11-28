@@ -170,6 +170,49 @@ func (gs *GlobalScripts) SetPreprocessorScript(scriptCode string) {
 	gs.setScriptCode("Preprocessor", scriptCode)
 }
 
+type ProtocolsAndCiphers struct {
+	XMLName struct{}                `xml:"map"`
+	Entries []ProtocolOrCipherEntry `xml:"entry"`
+}
+
+type ProtocolOrCipherEntry struct {
+	XMLName       struct{} `xml:"entry"`
+	EntryType     string   `xml:"string"`
+	EntryContents []string `xml:"string-array>string"`
+}
+
+func (pc *ProtocolsAndCiphers) getEntryContents(entryType string) []string {
+	returnVal := []string{}
+
+	for _, entry := range pc.Entries {
+		if entry.EntryType == entryType {
+			returnVal = entry.EntryContents
+		}
+	}
+
+	return returnVal
+}
+
+func (pc *ProtocolsAndCiphers) GetEnabledCipherSuites() []string {
+	return pc.getEntryContents("enabledCipherSuites")
+}
+
+func (pc *ProtocolsAndCiphers) GetEnabledClientProtocols() []string {
+	return pc.getEntryContents("enabledClientProtocols")
+}
+
+func (pc *ProtocolsAndCiphers) GetSupportedCipherSuites() []string {
+	return pc.getEntryContents("supportedCipherSuites")
+}
+
+func (pc *ProtocolsAndCiphers) GetSupportedProtocols() []string {
+	return pc.getEntryContents("supportedProtocols")
+}
+
+func (pc *ProtocolsAndCiphers) GetEnabledServerProtocols() []string {
+	return pc.getEntryContents("enabledServerProtocols")
+}
+
 type PasswordRequirements struct {
 	XMLName        struct{} `xml:"passwordRequirements"`
 	MinimumLength  int      `xml:"minLength"`
@@ -183,6 +226,24 @@ type PasswordRequirements struct {
 	GracePeriod    int      `xml:"gracePeriod"`
 	ReusePeriod    int      `xml:"reusePeriod"`
 	ReuseLimit     int      `xml:"reuseLimit"`
+}
+
+type Resources struct {
+	XMLName struct{}   `xml:"list"`
+	Entries []Resource `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
+}
+
+type Resource struct {
+	XMLName                  struct{} `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
+	Version                  string   `xml:"version,attr"`
+	PluginPointName          string   `xml:"pluginPointName"` // TODO - set a default value?
+	Type                     string   `xml:"type"`
+	Id                       string   `xml:"id"`
+	Name                     string   `xml:"name"`
+	Description              string   `xml:"description"`
+	IncludeWithGlobalScripts bool     `xml:"includeWithGlobalScripts"`
+	Directory                string   `xml:"directory"`
+	DirectoryRecursion       bool     `xml:"directoryRecursion"`
 }
 
 func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
@@ -675,4 +736,42 @@ func GetPasswordRequirements(apiConfig gomirth.MirthApiConfig, mirthSession gomi
 	}
 
 	return pwd, nil
+}
+
+func GetProtocolsAndCiphers(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (ProtocolsAndCiphers, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/protocolsAndCipherSuites")
+
+	header := http.Header{}
+	header.Add("Accept", "application/xml")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return ProtocolsAndCiphers{}, err
+	}
+
+	pAndC := ProtocolsAndCiphers{}
+	err = xml.Unmarshal(resp.Body, &pAndC)
+	if err != nil {
+		return ProtocolsAndCiphers{}, err
+	}
+
+	return pAndC, nil
+}
+
+func GetResources(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (Resources, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/resources")
+
+	header := http.Header{}
+	header.Add("Accept", "application/xml")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return Resources{}, err
+	}
+
+	resources := Resources{}
+	err = xml.Unmarshal(resp.Body, &resources)
+	if err != nil {
+		return Resources{}, err
+	}
+
+	return resources, nil
 }
