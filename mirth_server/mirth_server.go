@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/austinmoody/gomirth"
+	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"strings"
@@ -233,17 +234,71 @@ type Resources struct {
 	Entries []Resource `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
 }
 
+// Creating a custom type for pluginPointName & id so that a default value can be
+// setup via Marshal/Unmarshal
+type PluginPointName string
+type ResourceIdentifier string
+
 type Resource struct {
-	XMLName                  struct{} `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
-	Version                  string   `xml:"version,attr"`
-	PluginPointName          string   `xml:"pluginPointName"` // TODO - set a default value?
-	Type                     string   `xml:"type"`
-	Id                       string   `xml:"id"`
-	Name                     string   `xml:"name"`
-	Description              string   `xml:"description"`
-	IncludeWithGlobalScripts bool     `xml:"includeWithGlobalScripts"`
-	Directory                string   `xml:"directory"`
-	DirectoryRecursion       bool     `xml:"directoryRecursion"`
+	XMLName                  struct{}           `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
+	PluginPointName          PluginPointName    `xml:"pluginPointName"`
+	Type                     string             `xml:"type"`
+	Id                       ResourceIdentifier `xml:"id"`
+	Name                     string             `xml:"name"`
+	Description              string             `xml:"description"`
+	IncludeWithGlobalScripts bool               `xml:"includeWithGlobalScripts"`
+	Directory                string             `xml:"directory"`
+	DirectoryRecursion       bool               `xml:"directoryRecursion"`
+}
+
+func (ppn PluginPointName) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	var s string
+
+	if ppn == "" {
+		s = "Directory Resource"
+	} else {
+		s = string(ppn)
+	}
+
+	return e.EncodeElement(s, start)
+}
+
+func (resourceId ResourceIdentifier) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	var s string
+
+	if resourceId == "" {
+		s = uuid.New().String()
+	} else {
+		s = string(resourceId)
+	}
+
+	return e.EncodeElement(s, start)
+}
+
+func (ppn *PluginPointName) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var s string
+	if err := d.DecodeElement(&s, &start); err != nil {
+		return err
+	}
+
+	if s == "" {
+		*ppn = "Directory Resource"
+	} else {
+		*ppn = PluginPointName(s)
+	}
+
+	return nil
+}
+
+func (resourceId *ResourceIdentifier) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
+	var s string
+	if err := d.DecodeElement(&s, &start); err != nil {
+		return err
+	}
+
+	*resourceId = ResourceIdentifier(s)
+
+	return nil
 }
 
 func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
