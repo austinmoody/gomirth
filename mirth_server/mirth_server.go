@@ -62,11 +62,11 @@ type ChannelTag struct {
 }
 
 type BackgroundColor struct {
-	XMLName struct{} `xml:"backgroundColor"`
-	Red     int      `xml:"red"`
-	Green   int      `xml:"green"`
-	Blue    int      `xml:"blue"`
-	Alpha   int      `xml:"alpha"`
+	//XMLName struct{} `xml:"backgroundColor"`
+	Red   int `xml:"red"`
+	Green int `xml:"green"`
+	Blue  int `xml:"blue"`
+	Alpha int `xml:"alpha"`
 }
 
 type CharacterSets struct {
@@ -299,6 +299,31 @@ func (resourceId *ResourceIdentifier) UnmarshalXML(d *xml.Decoder, start xml.Sta
 	*resourceId = ResourceIdentifier(s)
 
 	return nil
+}
+
+type ServerSettings struct {
+	XMLName                struct{}         `xml:"serverSettings"`
+	EnvironmentName        string           `xml:"environmentName,omitempty"`
+	ServerName             string           `xml:"serverName,omitempty"`
+	ClearGlobalMap         bool             `xml:"clearGlobalMap,omitempty"`
+	QueueBufferSize        int              `xml:"queueBufferSize,omitempty"`
+	SmtpHost               string           `xml:"smtpHost,omitempty"`
+	SmtpPort               string           `xml:"smtpPort,omitempty"`
+	SmtpTimeout            string           `xml:"smtpTimeout,omitempty"`
+	SmtpFrom               string           `xml:"smtpFrom,omitempty"`
+	SmtpSecure             string           `xml:"smtpSecure,omitempty"`
+	SmtpAuth               bool             `xml:"smtpAuth,omitempty"`
+	SmtpUsername           string           `xml:"smtpUsername,omitempty"`
+	SmtpPassword           string           `xml:"smtpPassword,omitempty"`
+	DefaultBackgroundColor BackgroundColor  `xml:"defaultAdministratorBackgroundColor"'`
+	DefaultMetaDataColumns []MetaDataColumn `xml:"defaultMetaDataColumns>metaDataColumn"`
+}
+
+type MetaDataColumn struct {
+	XMLName     struct{} `xml:"metaDataColumn"`
+	Name        string   `xml:"name,omitempty"`
+	Type        string   `xml:"type,omitempty"`
+	MappingName string   `xml:"mappingName,omitempty"`
 }
 
 func GenerateGuid(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
@@ -829,4 +854,47 @@ func GetResources(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSe
 	}
 
 	return resources, nil
+}
+
+func GetServerSettings(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (ServerSettings, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/settings")
+
+	header := http.Header{}
+	header.Add("Accept", "application/xml")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return ServerSettings{}, err
+	}
+
+	ss := ServerSettings{}
+	err = xml.Unmarshal(resp.Body, &ss)
+	if err != nil {
+		return ServerSettings{}, err
+	}
+
+	return ss, nil
+}
+
+func UpdateServerSettings(serverSettings ServerSettings, apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) error {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/globalScripts")
+
+	mapXml, err := xml.Marshal(serverSettings)
+	if err != nil {
+		return err
+	}
+
+	headers := http.Header{}
+	headers.Add("Content-Type", "application/xml")
+	headers.Add("Accept", "application/xml")
+
+	resp, err := gomirth.MirthApiPutter(apiConfig, mirthSession, apiUrl, headers, mapXml)
+	if err != nil {
+		return err
+	}
+
+	if resp.Code != 204 {
+		return errors.New(fmt.Sprintf("issue updating server settings, status code returned = %d", resp.Code))
+	}
+
+	return nil
 }
