@@ -947,3 +947,23 @@ func GetRhinoLanguageVersion(apiConfig gomirth.MirthApiConfig, mirthSession gomi
 
 	return rhinoVersion, nil
 }
+
+func GetServerStatus(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/status")
+
+	header := http.Header{}
+	header.Add("Accept", "application/xml")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return "", err
+	}
+
+	serverStatus := ""
+
+	err = xml.Unmarshal(resp.Body, &serverStatus)
+	if err != nil {
+		return "", err
+	}
+
+	return serverStatus, nil
+}
