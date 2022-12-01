@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/austinmoody/gomirth"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"strings"
@@ -234,71 +233,24 @@ type Resources struct {
 	Entries []Resource `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
 }
 
-// Creating a custom type for pluginPointName & id so that a default value can be
-// setup via Marshal/Unmarshal
-type PluginPointName string
-type ResourceIdentifier string
-
 type Resource struct {
-	XMLName                  struct{}           `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
-	PluginPointName          PluginPointName    `xml:"pluginPointName"`
-	Type                     string             `xml:"type"`
-	Id                       ResourceIdentifier `xml:"id"`
-	Name                     string             `xml:"name"`
-	Description              string             `xml:"description"`
-	IncludeWithGlobalScripts bool               `xml:"includeWithGlobalScripts"`
-	Directory                string             `xml:"directory"`
-	DirectoryRecursion       bool               `xml:"directoryRecursion"`
+	XMLName                  struct{} `xml:"com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties"`
+	PluginPointName          string   `xml:"pluginPointName"`
+	Type                     string   `xml:"type"`
+	Id                       string   `xml:"id"`
+	Name                     string   `xml:"name"`
+	Description              string   `xml:"description"`
+	IncludeWithGlobalScripts bool     `xml:"includeWithGlobalScripts"`
+	Directory                string   `xml:"directory"`
+	DirectoryRecursion       bool     `xml:"directoryRecursion"`
 }
 
-func (ppn PluginPointName) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	var s string
-
-	if ppn == "" {
-		s = "Directory Resource"
-	} else {
-		s = string(ppn)
-	}
-
-	return e.EncodeElement(s, start)
+func (r *Resource) DefaultType() string {
+	return "Directory"
 }
 
-func (resourceId ResourceIdentifier) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	var s string
-
-	if resourceId == "" {
-		s = uuid.New().String()
-	} else {
-		s = string(resourceId)
-	}
-
-	return e.EncodeElement(s, start)
-}
-
-func (ppn *PluginPointName) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	var s string
-	if err := d.DecodeElement(&s, &start); err != nil {
-		return err
-	}
-
-	if s == "" {
-		*ppn = "Directory Resource"
-	} else {
-		*ppn = PluginPointName(s)
-	}
-
-	return nil
-}
-
-func (resourceId *ResourceIdentifier) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	var s string
-	if err := d.DecodeElement(&s, &start); err != nil {
-		return err
-	}
-
-	*resourceId = ResourceIdentifier(s)
-
-	return nil
+func (r *Resource) DefaultPluginPointName() string {
+	return "Directory Resource"
 }
 
 type ServerSettings struct {
@@ -854,6 +806,48 @@ func GetResources(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSe
 	}
 
 	return resources, nil
+}
+
+func UpdateResources(resources Resources, apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) error {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/resources")
+
+	for _, resource := range resources.Entries {
+		// Id, PluginPointName, and Type must not be blank
+		// Typically PluginPointName = "Directory Resource"
+		// Typically Type = "Directory"
+		// However not defaulting these.
+		if resource.Id == "" {
+			return errors.New("invalid Resource found, missing Id")
+		}
+
+		if resource.Type == "" {
+			return errors.New("invalid Resource found, missing Type")
+		}
+
+		if resource.PluginPointName == "" {
+			return errors.New("invalid Resource found, missing PluginPointName")
+		}
+	}
+
+	mapXml, err := xml.Marshal(resources)
+	if err != nil {
+		return err
+	}
+
+	headers := http.Header{}
+	headers.Add("Content-Type", "application/xml")
+	headers.Add("Accept", "application/xml")
+
+	resp, err := gomirth.MirthApiPutter(apiConfig, mirthSession, apiUrl, headers, mapXml)
+	if err != nil {
+		return err
+	}
+
+	if resp.Code != 204 {
+		return errors.New(fmt.Sprintf("issue updating server resources, status code returned = %d", resp.Code))
+	}
+
+	return nil
 }
 
 func GetServerSettings(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (ServerSettings, error) {
