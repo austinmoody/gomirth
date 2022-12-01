@@ -927,3 +927,23 @@ func UpdateServerSettings(serverSettings ServerSettings, apiConfig gomirth.Mirth
 
 	return nil
 }
+
+func GetRhinoLanguageVersion(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (string, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/rhinoLanguageVersion")
+
+	header := http.Header{}
+	header.Add("Accept", "application/xml")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return "", err
+	}
+
+	rhinoVersion := ""
+
+	err = xml.Unmarshal(resp.Body, &rhinoVersion)
+	if err != nil {
+		return "", err
+	}
+
+	return rhinoVersion, nil
+}
