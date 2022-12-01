@@ -850,6 +850,25 @@ func UpdateResources(resources Resources, apiConfig gomirth.MirthApiConfig, mirt
 	return nil
 }
 
+func ReloadResource(resourceId string, apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) error {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s/%s/_reload", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/resources", resourceId)
+
+	headers := http.Header{}
+	headers.Add("Content-Type", "application/xml")
+	headers.Add("Accept", "application/xml")
+
+	resp, err := gomirth.MirthApiPoster(apiConfig, mirthSession, apiUrl, headers)
+	if err != nil {
+		return err
+	}
+
+	if resp.Code != 204 {
+		return errors.New(fmt.Sprintf("issue reloading server resources for id %s, status code returned = %d", resourceId, resp.Code))
+	}
+
+	return nil
+}
+
 func GetServerSettings(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (ServerSettings, error) {
 	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/settings")
 

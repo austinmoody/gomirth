@@ -67,6 +67,34 @@ func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl 
 	return MirthApiResponse{Code: resp.StatusCode, Body: data}, nil
 }
 
+func MirthApiPoster(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header) (MirthApiResponse, error) {
+	req, err := http.NewRequest("POST", apiUrl, nil)
+	if err != nil {
+		return MirthApiResponse{}, err
+	}
+
+	if len(headers) == 0 {
+		req.Header.Add("Accept", "application/xml")
+		req.Header.Add("Content-Type", "application/xml")
+	} else {
+		req.Header = headers
+	}
+	req.AddCookie(&mirthSession.JsessionId)
+
+	c := &http.Client{}
+	if apiConfig.IgnoreCert == true {
+		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+		c = &http.Client{Transport: tr}
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return MirthApiResponse{}, err
+	}
+
+	return MirthApiResponse{Code: resp.StatusCode, Body: nil}, nil
+}
+
 func MirthApiGetter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header) (MirthApiResponse, error) {
 
 	req, err := http.NewRequest("GET", apiUrl, nil)
