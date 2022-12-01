@@ -876,8 +876,24 @@ func GetServerSettings(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.Mi
 }
 
 func UpdateServerSettings(serverSettings ServerSettings, apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) error {
-	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/globalScripts")
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/settings")
 
+	// Mirth Server Settings - Only 3 specific values available for MetaData columns
+	/*
+		NAME	TYPE	MAPPINGNAME
+		SOURCE	STRING	mirth_source
+		VERSION	STRING	mirth_version
+		TYPE	STRING	mirth_type
+	*/
+	for _, mdc := range serverSettings.DefaultMetaDataColumns {
+		switch mdc {
+		case MetaDataColumn{Name: "SOURCE", Type: "STRING", MappingName: "mirth_source"}:
+		case MetaDataColumn{Name: "VERSION", Type: "STRING", MappingName: "mirth_version"}:
+		case MetaDataColumn{Name: "TYPE", Type: "STRING", MappingName: "mirth_type"}:
+		default:
+			return errors.New(fmt.Sprintf("invalid MetaData column - Name: %s Type: %s MappingName: %s", mdc.Name, mdc.Type, mdc.MappingName))
+		}
+	}
 	mapXml, err := xml.Marshal(serverSettings)
 	if err != nil {
 		return err
