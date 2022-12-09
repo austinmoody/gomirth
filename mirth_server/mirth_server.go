@@ -182,7 +182,7 @@ type ProtocolOrCipherEntry struct {
 }
 
 func (pc *ProtocolsAndCiphers) getEntryContents(entryType string) []string {
-	returnVal := []string{}
+	var returnVal []string
 
 	for _, entry := range pc.Entries {
 		if entry.EntryType == entryType {
@@ -966,4 +966,24 @@ func GetServerStatus(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.Mirt
 	}
 
 	return serverStatus, nil
+}
+
+func GetServerTime(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (gomirth.MirthTime, error) {
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "server/time")
+
+	header := http.Header{}
+	header.Add("Accept", "application/xml")
+	resp, err := gomirth.MirthApiGetter(apiConfig, mirthSession, apiUrl, header)
+	if err != nil {
+		return gomirth.MirthTime{}, err
+	}
+
+	serverTime := gomirth.MirthTime{}
+
+	err = xml.Unmarshal(resp.Body, &serverTime)
+	if err != nil {
+		return gomirth.MirthTime{}, err
+	}
+
+	return serverTime, nil
 }

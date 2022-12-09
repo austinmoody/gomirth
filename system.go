@@ -1,10 +1,9 @@
-package mirth_system
+package gomirth
 
 import (
 	"crypto/tls"
 	"encoding/xml"
 	"fmt"
-	"github.com/austinmoody/gomirth"
 	"io"
 	"net/http"
 )
@@ -19,31 +18,30 @@ type MirthSystemInfo struct {
 }
 
 type MirthSystemStats struct {
-	TimeStamp            gomirth.MirthTime `xml:"timestamp"`
-	CpuUsagePercentage   float32           `xml:"cpuUsagePct"`
-	AllocatedMemoryBytes int               `xml:"allocatedMemoryBytes"`
-	FreeMemoryBytes      int               `xml:"freeMemoryBytes"`
-	MaxMemoryBytes       int               `xml:"maxMemoryBytes"`
-	DiskFreeBytes        int               `xml:"diskFreeBytes"`
-	DiskTotalBytes       int               `xml:"diskTotalBytes"`
+	TimeStamp            MirthTime `xml:"timestamp"`
+	CpuUsagePercentage   float32   `xml:"cpuUsagePct"`
+	AllocatedMemoryBytes int       `xml:"allocatedMemoryBytes"`
+	FreeMemoryBytes      int       `xml:"freeMemoryBytes"`
+	MaxMemoryBytes       int       `xml:"maxMemoryBytes"`
+	DiskFreeBytes        int       `xml:"diskFreeBytes"`
+	DiskTotalBytes       int       `xml:"diskTotalBytes"`
 }
 
-func GetSystemInfo(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (MirthSystemInfo, error) {
+func (a *api) GetSystemInfo() (MirthSystemInfo, error) {
 
 	mirthSystemInfo := MirthSystemInfo{}
 
-	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "system/info")
-
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", a.Configuration.Host, a.Configuration.Port, a.Configuration.BaseUrl, "system/info")
 	req, err := http.NewRequest("GET", apiUrl, nil)
 	if err != nil {
 		return mirthSystemInfo, err
 	}
 
 	req.Header.Add("Accept", "application/xml")
-	req.AddCookie(&mirthSession.JsessionId)
+	req.AddCookie(&a.Session.JsessionId)
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}
@@ -71,10 +69,10 @@ func GetSystemInfo(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthS
 	return mirthSystemInfo, nil
 }
 
-func GetSystemStats(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (MirthSystemStats, error) {
+func (a *api) GetSystemStats() (MirthSystemStats, error) {
 	mirthSystemStats := MirthSystemStats{}
 
-	apiUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "system/stats")
+	apiUrl := fmt.Sprintf("https://%s:%d%s%s", a.Configuration.Host, a.Configuration.Port, a.Configuration.BaseUrl, "system/stats")
 
 	req, err := http.NewRequest("GET", apiUrl, nil)
 	if err != nil {
@@ -82,10 +80,10 @@ func GetSystemStats(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.Mirth
 	}
 
 	req.Header.Add("Accept", "application/xml")
-	req.AddCookie(&mirthSession.JsessionId)
+	req.AddCookie(&a.Session.JsessionId)
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}

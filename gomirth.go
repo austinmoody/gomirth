@@ -8,11 +8,11 @@ import (
 )
 
 type MirthApiConfig struct {
-	Host         string
-	Port         int
-	BaseUrl      string
-	IgnoreCert   bool
-	MirthVersion string
+	Host       string
+	Port       int
+	BaseUrl    string
+	IgnoreCert bool
+	//MirthVersion string
 }
 
 type MirthSession struct {
@@ -31,6 +31,22 @@ type MirthTime struct {
 type MirthApiResponse struct {
 	Code int
 	Body []byte
+}
+
+type api struct {
+	Configuration MirthApiConfig
+	Session       MirthSession
+}
+
+func Api(host string, port int, baseUrl string, ignoreCert bool) api {
+	return api{
+		Configuration: MirthApiConfig{
+			Host:       host,
+			Port:       port,
+			BaseUrl:    baseUrl,
+			IgnoreCert: ignoreCert,
+		},
+	}
 }
 
 func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header, toPut []byte) (MirthApiResponse, error) {

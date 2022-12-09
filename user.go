@@ -1,11 +1,10 @@
-package mirth_user
+package gomirth
 
 import (
 	"crypto/tls"
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"github.com/austinmoody/gomirth"
 	"io"
 	"net/http"
 	"net/url"
@@ -24,30 +23,30 @@ type MirthUsers struct {
 }
 
 type MirthUser struct {
-	Id               string            `xml:"id"`
-	Username         string            `xml:"username"`
-	Email            string            `xml:"email"`
-	FirstName        string            `xml:"firstName"`
-	LastName         string            `xml:"lastName"`
-	Organization     string            `xml:"organization"`
-	Description      string            `xml:"description"`
-	PhoneNumber      string            `xml:"phoneNumber"`
-	Industry         string            `xml:"industry"`
-	LastLogin        gomirth.MirthTime `xml:"lastLogin"`
-	StrikeCount      int               `xml:"strikeCount"`
-	GracePeriodStart gomirth.MirthTime `xml:"gracePeriodStart"`
-	LastStrike       gomirth.MirthTime `xml:"lastStrikeTime"`
+	Id               string    `xml:"id"`
+	Username         string    `xml:"username"`
+	Email            string    `xml:"email"`
+	FirstName        string    `xml:"firstName"`
+	LastName         string    `xml:"lastName"`
+	Organization     string    `xml:"organization"`
+	Description      string    `xml:"description"`
+	PhoneNumber      string    `xml:"phoneNumber"`
+	Industry         string    `xml:"industry"`
+	LastLogin        MirthTime `xml:"lastLogin"`
+	StrikeCount      int       `xml:"strikeCount"`
+	GracePeriodStart MirthTime `xml:"gracePeriodStart"`
+	LastStrike       MirthTime `xml:"lastStrikeTime"`
 }
 
-func Login(apiConfig gomirth.MirthApiConfig, username string, password string) (gomirth.MirthSession, error) {
+func (a *api) Login(username string, password string) error {
 
-	loginStatus := gomirth.MirthSession{Success: false}
+	a.Session.Success = false
 
 	// Login to Mirth API
 	// Response Code 401 when bad user/pass
 	// Response Code 200 when good user/pass
 	// Response Code 500 if just a bad request
-	userLoginUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "users/_login")
+	userLoginUrl := fmt.Sprintf("https://%s:%d%s%s", a.Configuration.Host, a.Configuration.Port, a.Configuration.BaseUrl, "users/_login")
 
 	userInfo := url.Values{}
 	userInfo.Set("username", username)
@@ -56,56 +55,56 @@ func Login(apiConfig gomirth.MirthApiConfig, username string, password string) (
 
 	req, err := http.NewRequest("POST", userLoginUrl, strings.NewReader(userInfoEncoded))
 	if err != nil {
-		return loginStatus, err
+		return err
 	}
 
 	req.Header.Add("Accept", "application/xml")
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}
 
 	resp, err := c.Do(req)
 	if err != nil {
-		return loginStatus, err
+		return err
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return loginStatus, err
+		return err
 	}
 
 	err = resp.Body.Close()
 	if err != nil {
-		return loginStatus, err
+		return err
 	}
 
-	err = xml.Unmarshal(data, &loginStatus)
+	err = xml.Unmarshal(data, &a.Session)
 	if err != nil {
-		return loginStatus, err
+		return err
 	}
 
-	if resp.StatusCode == 200 && loginStatus.Status == "SUCCESS" {
-		loginStatus.Success = true
+	if resp.StatusCode == 200 && a.Session.Status == "SUCCESS" {
+		a.Session.Success = true
 		// We have successfully logged in, get JSESSIONID needed for future calls
 		for _, cookie := range resp.Cookies() {
 			if cookie.Name == "JSESSIONID" {
-				loginStatus.JsessionId = *cookie
+				a.Session.JsessionId = *cookie
 			}
 		}
 	}
 
-	return loginStatus, nil
+	return nil
 }
 
-func Logout(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (bool, error) {
+func (a *api) Logout() (bool, error) {
 	// Mirth API Logout
 	// 204 = successful, logout returns no message
 	// 401 = attempt to log out when weren't logged in
-	logoutUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "users/_logout")
+	logoutUrl := fmt.Sprintf("https://%s:%d%s%s", a.Configuration.Host, a.Configuration.Port, a.Configuration.BaseUrl, "users/_logout")
 
 	req, err := http.NewRequest("POST", logoutUrl, nil)
 	if err != nil {
@@ -114,10 +113,10 @@ func Logout(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession)
 
 	req.Header.Add("Accept", "application/xml")
 	req.Header.Add("Content-Type", "application/xml")
-	req.AddCookie(&mirthSession.JsessionId)
+	req.AddCookie(&a.Session.JsessionId)
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}
@@ -135,11 +134,11 @@ func Logout(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession)
 
 }
 
-func GetUsers(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSession) (MirthUsers, error) {
+func (a *api) GetUsers() (MirthUsers, error) {
 
 	mirthUsers := MirthUsers{}
 
-	usersUrl := fmt.Sprintf("https://%s:%d%s%s", apiConfig.Host, apiConfig.Port, apiConfig.BaseUrl, "users")
+	usersUrl := fmt.Sprintf("https://%s:%d%s%s", a.Configuration.Host, a.Configuration.Port, a.Configuration.BaseUrl, "users")
 
 	req, err := http.NewRequest("GET", usersUrl, nil)
 	if err != nil {
@@ -147,10 +146,10 @@ func GetUsers(apiConfig gomirth.MirthApiConfig, mirthSession gomirth.MirthSessio
 	}
 
 	req.Header.Add("Accept", "application/xml")
-	req.AddCookie(&mirthSession.JsessionId)
+	req.AddCookie(&a.Session.JsessionId)
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}
