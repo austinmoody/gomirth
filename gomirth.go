@@ -5,7 +5,13 @@ import (
 	"crypto/tls"
 	"io"
 	"net/http"
+	"net/url"
 )
+
+type QueryParams struct {
+	Key   string
+	Value string
+}
 
 type MirthApiConfig struct {
 	Host       string
@@ -49,7 +55,7 @@ func Api(host string, port int, baseUrl string, ignoreCert bool) api {
 	}
 }
 
-func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header, toPut []byte) (MirthApiResponse, error) {
+func (a *api) MirthApiPutter(apiUrl string, headers http.Header, toPut []byte) (MirthApiResponse, error) {
 
 	req, err := http.NewRequest("PUT", apiUrl, bytes.NewReader(toPut))
 	if err != nil {
@@ -57,10 +63,10 @@ func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl 
 	}
 
 	req.Header = headers
-	req.AddCookie(&mirthSession.JsessionId)
+	req.AddCookie(&a.Session.JsessionId)
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}
@@ -83,7 +89,7 @@ func MirthApiPutter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl 
 	return MirthApiResponse{Code: resp.StatusCode, Body: data}, nil
 }
 
-func MirthApiPoster(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header) (MirthApiResponse, error) {
+func (a *api) MirthApiPoster(apiUrl string, headers http.Header) (MirthApiResponse, error) {
 	req, err := http.NewRequest("POST", apiUrl, nil)
 	if err != nil {
 		return MirthApiResponse{}, err
@@ -95,10 +101,10 @@ func MirthApiPoster(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl 
 	} else {
 		req.Header = headers
 	}
-	req.AddCookie(&mirthSession.JsessionId)
+	req.AddCookie(&a.Session.JsessionId)
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}
@@ -111,7 +117,7 @@ func MirthApiPoster(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl 
 	return MirthApiResponse{Code: resp.StatusCode, Body: nil}, nil
 }
 
-func MirthApiGetter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl string, headers http.Header) (MirthApiResponse, error) {
+func (a *api) MirthApiGetter(apiUrl string, headers http.Header, queryParams url.Values) (MirthApiResponse, error) {
 
 	req, err := http.NewRequest("GET", apiUrl, nil)
 	if err != nil {
@@ -124,10 +130,14 @@ func MirthApiGetter(apiConfig MirthApiConfig, mirthSession MirthSession, apiUrl 
 	} else {
 		req.Header = headers
 	}
-	req.AddCookie(&mirthSession.JsessionId)
+	req.AddCookie(&a.Session.JsessionId)
+
+	if len(queryParams) > 0 {
+		req.URL.RawQuery = queryParams.Encode()
+	}
 
 	c := &http.Client{}
-	if apiConfig.IgnoreCert == true {
+	if a.Configuration.IgnoreCert == true {
 		tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 		c = &http.Client{Transport: tr}
 	}
