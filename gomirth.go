@@ -89,7 +89,7 @@ func (a *api) MirthApiPutter(apiUrl string, headers http.Header, toPut []byte) (
 	return MirthApiResponse{Code: resp.StatusCode, Body: data}, nil
 }
 
-func (a *api) MirthApiPoster(apiUrl string, headers http.Header) (MirthApiResponse, error) {
+func (a *api) MirthApiPoster(apiUrl string, headers http.Header, queryParams url.Values) (MirthApiResponse, error) {
 	req, err := http.NewRequest("POST", apiUrl, nil)
 	if err != nil {
 		return MirthApiResponse{}, err
@@ -102,6 +102,10 @@ func (a *api) MirthApiPoster(apiUrl string, headers http.Header) (MirthApiRespon
 		req.Header = headers
 	}
 	req.AddCookie(&a.Session.JsessionId)
+
+	if len(queryParams) > 0 {
+		req.URL.RawQuery = queryParams.Encode()
+	}
 
 	c := &http.Client{}
 	if a.Configuration.IgnoreCert == true {

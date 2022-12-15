@@ -856,7 +856,7 @@ func (a *api) ReloadResource(resourceId string) error {
 	headers.Add("Content-Type", "application/xml")
 	headers.Add("Accept", "application/xml")
 
-	resp, err := a.MirthApiPoster(apiUrl, headers)
+	resp, err := a.MirthApiPoster(apiUrl, headers, nil)
 	if err != nil {
 		return err
 	}
